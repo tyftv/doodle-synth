@@ -1,0 +1,47 @@
+name: Build plugin
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get the WebView2 SDK (lets the faceplate run inside the plugin)
+        shell: bash
+        run: nuget install Microsoft.Web.WebView2 -Version 1.0.2903.40 -OutputDirectory "$RUNNER_TEMP/webview2"
+
+      - name: Configure
+        shell: bash
+        run: cmake -S . -B build -A x64 -DJUCE_WEBVIEW2_PACKAGE_LOCATION="$RUNNER_TEMP/webview2"
+
+      - name: Build VST3 + standalone app
+        run: cmake --build build --config Release --target DoodleSynth_VST3 DoodleSynth_Standalone --parallel
+
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Compress-Archive -Path "build/DoodleSynth_artefacts/Release/VST3/Doodle Synth.vst3" -DestinationPath dist/DoodleSynth-VST3-Windows.zip
+          Compress-Archive -Path "build/DoodleSynth_artefacts/Release/Standalone/*" -DestinationPath dist/DoodleSynth-Standalone-Windows.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DoodleSynth-Windows
+          path: dist/*.zip
+
+      - name: Publish as the "latest" download
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest dist/*.zip --target "$GITHUB_SHA" --title "Doodle Synth — latest build" \
+            --notes "Unzip DoodleSynth-VST3-Windows.zip and move the 'Doodle Synth.vst3' folder into C:\\Program Files\\Common Files\\VST3, then rescan plugins in FL Studio."
