@@ -8,7 +8,7 @@ DoodleSynthEditor::DoodleSynthEditor (DoodleSynthProcessor& p)
     web.goToURL (juce::WebBrowserComponent::getResourceProviderRoot());
     setResizable (true, true);
     setResizeLimits (720, 480, 2560, 1800);
-    setSize (1180, 860);
+    setSize (1120, 900);
     proc.onStateRestored = [this] { if (uiReady) sendLoad(); };
     startTimerHz (30);
 }
@@ -50,6 +50,16 @@ juce::WebBrowserComponent::Options DoodleSynthEditor::makeOptions()
                 proc.keyboardState.noteOn (1, n, juce::jlimit (0.05f, 1.0f, (float) (double) v.getProperty ("v", 0.9)));
             else
                 proc.keyboardState.noteOff (1, n, 0.0f);
+        })
+        .withEventListener ("size", [this] (const juce::var& v)
+        {
+            // lock the window to the faceplate's shape so there's no empty border
+            const double w = (double) v.getProperty ("w", 1260), h = (double) v.getProperty ("h", 1000);
+            if (w < 100 || h < 100) return;
+            const double aspect = w / h;
+            setResizeLimits (700, (int) (700 / aspect), 2560, (int) (2560 / aspect));
+            if (auto* c = getConstrainer()) c->setFixedAspectRatio (aspect);
+            setSize (getWidth(), juce::roundToInt (getWidth() / aspect));
         })
         .withEventListener ("panic", [this] (const juce::var&)
         {

@@ -180,18 +180,18 @@ body.assign2 [data-mod]{outline:1.5px dashed var(--m3);cursor:copy}
 .foot b{color:#a39d8e;font-weight:400}
 
 @media (max-width:1120px){
-  .osc-body{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-  .osc-body .knobcol{grid-column:span 2}
-  .modrow{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .rack{grid-template-columns:repeat(4,minmax(0,1fr))}
+  html:not(.plugin) .osc-body{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  html:not(.plugin) .osc-body .knobcol{grid-column:span 2}
+  html:not(.plugin) .modrow{grid-template-columns:repeat(2,minmax(0,1fr))}
+  html:not(.plugin) .rack{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
 @media (max-width:720px){
-  .device{grid-template-columns:minmax(0,1fr)}
-  .cheek{display:none}
-  .osc-body,.modrow,.rack{grid-template-columns:minmax(0,1fr)}
-  .osc-body .knobcol{grid-column:auto}
-  .keys{flex-direction:column}
-  .keyside{flex-direction:row}
+  html:not(.plugin) .device{grid-template-columns:minmax(0,1fr)}
+  html:not(.plugin) .cheek{display:none}
+  html:not(.plugin) .osc-body,html:not(.plugin) .modrow,html:not(.plugin) .rack{grid-template-columns:minmax(0,1fr)}
+  html:not(.plugin) .osc-body .knobcol{grid-column:auto}
+  html:not(.plugin) .keys{flex-direction:column}
+  html:not(.plugin) .keyside{flex-direction:row}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -871,10 +871,16 @@ if(PLUGIN){
  JB.addEventListener('viz',e=>{if(!e)return;PV.playing=!!e.playing;PV.mp=e.mp||PV.mp;PV.mv=e.mv||PV.mv;PV.scope=e.scope||null;
   if(e.bpm&&Math.abs(e.bpm-PV.bpm)>.01){PV.bpm=e.bpm;$('status').textContent='IN DAW · '+Math.round(e.bpm)+' BPM';}});
  setInterval(push,80);
- // fit the whole faceplate inside the plugin window
- const dev=document.querySelector('.device');let natW=0,natH=0;
- const fitZoom=()=>{document.body.style.zoom=1;natW=1290;natH=dev.getBoundingClientRect().height+28;const z=Math.min(innerWidth/natW,innerHeight/natH);document.body.style.zoom=z.toFixed(3);drawDirty=true;};
- addEventListener('resize',fitZoom);setTimeout(fitZoom,50);
+ // the faceplate fills the plugin window edge to edge; the window is locked to its shape
+ document.documentElement.classList.add('plugin');
+ const dev=document.querySelector('.device');
+ document.body.style.padding='0';document.body.style.background='#0b0b0d';
+ dev.style.width='1260px';dev.style.maxWidth='none';dev.style.margin='0';dev.style.borderRadius='0';dev.style.boxShadow='none';
+ let natW=1260,natH=0,sentSize=false;
+ const fitZoom=()=>{document.body.style.zoom=1;natH=Math.ceil(dev.getBoundingClientRect().height);
+  const z=Math.min(innerWidth/natW,innerHeight/natH);document.body.style.zoom=z.toFixed(4);
+  if(!sentSize){sentSize=true;JB.emitEvent('size',{w:natW,h:natH});}drawDirty=true;};
+ addEventListener('resize',fitZoom);setTimeout(fitZoom,60);
  JB.emitEvent('ready',{});
 }
 loop();
