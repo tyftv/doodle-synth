@@ -314,10 +314,10 @@ const STAMPS={
  Wobble:()=>curvePts(t=>Math.sin(TAU*t)*.7+Math.sin(TAU*7*t)*.3,200),
  Scribble:()=>{let y=rnd(-.5,.5),v=0;return curvePts(()=>{v=clamp(v+rnd(-.12,.12),-.18,.18);y=clamp(y+v,-1,1);if(Math.abs(y)>=1)v*=-1;return y;},160);}
 };
-const shapeT=(t,c)=>Math.pow(t,Math.pow(2,c*3));
+const shapeT=(t,c)=>{const k=c*14;if(Math.abs(k)<1e-3)return t;return (Math.exp(k*t)-1)/(Math.exp(k)-1);};
 function ptsToCurve(pts){return Array.from({length:128},(_,j)=>{const x=j/127;let k=0;while(k<pts.length-2&&pts[k+1].x<x)k++;const a=pts[k],b=pts[k+1],dx=b.x-a.x;
  if(dx<=1e-6)return b.y;const t=clamp((x-a.x)/dx,0,1);return clamp(a.y+(b.y-a.y)*shapeT(t,a.c),0,1);});}
-const MPTS={Decay:()=>[{x:0,y:1,c:-.6},{x:1,y:0,c:0}],'Ramp up':()=>[{x:0,y:0,c:0},{x:1,y:1,c:0}],Triangle:()=>[{x:0,y:0,c:0},{x:.5,y:1,c:0},{x:1,y:0,c:0}],
+const MPTS={Decay:()=>[{x:0,y:1,c:-.4},{x:1,y:0,c:0}],'Ramp up':()=>[{x:0,y:0,c:0},{x:1,y:1,c:0}],Triangle:()=>[{x:0,y:0,c:0},{x:.5,y:1,c:0},{x:1,y:0,c:0}],
  Square:()=>[{x:0,y:1,c:0},{x:.5,y:1,c:0},{x:.5,y:0,c:0},{x:1,y:0,c:0}],Pluck:()=>[{x:0,y:0,c:0},{x:.05,y:1,c:-.5},{x:.4,y:.25,c:-.4},{x:1,y:0,c:0}],
  Steps:()=>{const p=[];for(let k=0;k<8;k++){const v=Math.round(Math.random()*8)/8;p.push({x:k/8,y:v,c:0},{x:(k+1)/8,y:v,c:0});}p[p.length-1].x=1;return p;}};
 const mkMod=(mode,shape,o={})=>{const pts=MPTS[shape]();return{mode,pts,curve:ptsToCurve(pts),len:.6,sync:true,div:4,rate:2,retrig:true,...o};};
@@ -775,11 +775,11 @@ function renderRoutes(){routeBoxes.forEach((box,i)=>{box.innerHTML='';const rs=S
  cv.addEventListener('pointerdown',e=>{if(e.button===2)return;e.preventDefault();cv.setPointerCapture(e.pointerId);const g=G(),x=e.clientX-g.r.left,y=e.clientY-g.r.top,m=S.mods[i];
   const k=hitPt(m,x,y,g);
   if(k>=0){const t=performance.now();if(t-lastClick.t<330&&lastClick.k===k){del(k);lastClick={t:0,k:-1};return;}lastClick={t,k};drag={type:'pt',k};return;}
-  for(let q=0;q<m.pts.length-1;q++){const [mx,my]=midPx(m,q,g);if(Math.hypot(mx-x,my-y)<8&&m.pts[q+1].x-m.pts[q].x>.005){drag={type:'c',k:q,y0:y,c0:m.pts[q].c};return;}}
+  for(let q=0;q<m.pts.length-1;q++){const [mx,my]=midPx(m,q,g);if(Math.hypot(mx-x,my-y)<13&&m.pts[q+1].x-m.pts[q].x>.005){drag={type:'c',k:q,y0:y,c0:m.pts[q].c};return;}}
   const np=fromPx(x,y,g);let at=m.pts.findIndex(pt=>pt.x>np.x);if(at<1)at=m.pts.length-1;m.pts.splice(at,0,{x:np.x,y:np.y,c:0});syncC();drag={type:'pt',k:at};lastClick={t:performance.now(),k:at};});
  cv.addEventListener('pointermove',e=>{if(!drag)return;const g=G(),x=e.clientX-g.r.left,y=e.clientY-g.r.top,m=S.mods[i];
   if(drag.type==='pt'){const k=drag.k,np=fromPx(x,y,g),last=m.pts.length-1;m.pts[k].x=k===0?0:k===last?1:clamp(np.x,m.pts[k-1].x,m.pts[k+1].x);m.pts[k].y=np.y;}
-  else{const a=m.pts[drag.k],b=m.pts[drag.k+1],dir=b.y>=a.y?1:-1;a.c=clamp(drag.c0+(y-drag.y0)/45*dir,-1,1);}syncC();});
+  else{const a=m.pts[drag.k],b=m.pts[drag.k+1],dir=b.y>=a.y?1:-1;a.c=clamp(drag.c0+(y-drag.y0)/110*dir,-1,1);}syncC();});
  ['pointerup','pointercancel'].forEach(t=>cv.addEventListener(t,()=>drag=null));
  modCanvases.push(cv);routeBoxes.push(p.querySelector('.routes'));
  $('modrow').insertBefore(p,$('modrow').querySelector('.filt'));
@@ -789,7 +789,7 @@ function drawMods(){modCanvases.forEach((cv,i)=>{const [w,h,d]=fit(cv),g=cv.getC
  g.lineJoin='round';g.strokeStyle=col;g.lineWidth=2.2*d;g.stroke();g.lineTo(w,h);g.lineTo(0,h);g.closePath();g.globalAlpha=.14;g.fillStyle=col;g.fill();g.globalAlpha=1;
  const pts=m.pts||[];pts.forEach((pt,k)=>{const x=pt.x*w,y=Y(pt.y);g.fillStyle=CV('--glass');g.strokeStyle=col;g.lineWidth=1.6*d;g.beginPath();
   if(k===0||k===pts.length-1)g.rect(x-3.5*d,y-3.5*d,7*d,7*d);else g.arc(x,y,4*d,0,TAU);g.fill();g.stroke();
-  if(k<pts.length-1&&pts[k+1].x-pt.x>.005){const b=pts[k+1],mx=(pt.x+b.x)/2*w,my=Y(pt.y+(b.y-pt.y)*shapeT(.5,pt.c));g.globalAlpha=.7;g.beginPath();g.arc(mx,my,2.4*d,0,TAU);g.stroke();g.globalAlpha=1;}});
+  if(k<pts.length-1&&pts[k+1].x-pt.x>.005){const b=pts[k+1],mx=(pt.x+b.x)/2*w,my=Y(pt.y+(b.y-pt.y)*shapeT(.5,pt.c));g.globalAlpha=.85;g.beginPath();g.arc(mx,my,3.4*d,0,TAU);g.stroke();g.globalAlpha=1;}});
  if((ctx||PLUGIN)&&isPlaying()){const x=modPos[i]*w;g.strokeStyle=CV('--fg');g.globalAlpha=.5;g.lineWidth=d;g.beginPath();g.moveTo(x,0);g.lineTo(x,h);g.stroke();g.globalAlpha=1;
   g.fillStyle=col;g.beginPath();g.arc(x,Y(modVal[i]),4.5*d,0,TAU);g.fill();}});}
 window.addEventListener('keydown',e=>{if(e.key==='Escape')setAssign(null);});
